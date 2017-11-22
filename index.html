@@ -5,39 +5,46 @@
     	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     	<!-- Bootstrap -->
     	<link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
-      <link href="css/mystyle.css" rel="stylesheet" media="screen">
+		<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     	
       <script src="/socket.io/socket.io.js"></script>
     	<script src="js/socket.io-1.2.0.js"></script>
     	<script src="js/jquery.js"></script>
       <script src="js/bootstrap.min.js"></script>
+      <link href="css/mystyle.css" rel="stylesheet" media="screen">
 
-      <!-- script src="js/physicsjs-full.js"></script-->
-      <!-- script src="js/dom.js"></script-->
-    	<!-- script src="js/debug.js"></script-->
-      <script src="js/page.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.5.1/pixi.min.js"></script>
-      <script src="js/TweenLite.min.js" type="text/javascript"></script>
+	  <script src="js/physicsjs.min.js"></script>
+      <script src="js/page.js"></script>
+	  <script src="https://maps.googleapis.com/maps/api/js?key=<YOUR_API_KEY>&libraries=places&callback=initAutocomplete"
+	           async defer></script>
   </head>
   <body>
-		<div style="text-align:center">
-			<button id="A" class="btn">A</button>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-			<button id="B" class="btn">B</button>
-		</div>
-  	<!--div style="width:100%;height:100%;position:fixed;">
-  		<div style='position:fixed;height:100%;'>
-  		  	<div id='viewport' tabindex='1' style='width:1000px;height:100px;'></div>
-  		<div style='position:fixed;top:0;width:450px;right:0%;border-width:3px;height:100%;border-style:solid;'>
-  		  	<h3>
-            <label id='txt'></label>
-            <br />
-            <label id='you' class='label'>You</label>
-          </h3>
-        <div>
-          <table id="userlist" style="position:fixed;width:400px;height:90%;overflow-y:scroll;" class="table table-condensed"></table>
-        </div>
-		  </div>
-    </div-->
+	<div id="myContents">
+		<div id="mySidebar" class="w3-sidebar w3-bar-block">
 
+			<input id="pac-input" class="controls" type="text" placeholder="Search Box">
+			<div id="map"></div>
+			<div id="buttonHolder">
+				<button id="A" class="btn">A</button>
+				<div style="display:inline">&nbsp;</div>
+				<button id="B" class="btn">B</button>
+				<div style="display:inline">&nbsp;</div>
+				<button id="C" class="btn">CHECK</button>
+			</div>
+			<div id="breifing"></div>
+			
+
+			<form action="/download_map" method="get" style="max-width:30%; background:lightgray">
+			Latitude: <input type="text" name="lat" id="lat-id"><br>
+			Longitude: <input type="text" name="lon" id="lon-id"><br>
+			<br>
+			<input type="submit" value="Submit" style="color:gray">
+			<br>
+			<br>
+			</form>
+		</div>
+		<div id="myCanvas"></div>
+	</div>
   </body>
 </html>

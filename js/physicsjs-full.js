@@ -7460,7 +7460,7 @@ Physics.behavior('body-collision-detection', function( parent ){
 
         // channel to listen to for collision candidates
         // set to "true" to force check every pair of bodies in the world
-        check: true,
+        check: 'collisions:candidates',
 
         // channel to publish events to
         channel: 'collisions:detected'
@@ -10386,9 +10386,6 @@ Physics.renderer('canvas', function( proto ){
 
             // actual viewport
             var viewport = this.el;
-            console.log(viewport);
-            console.log(viewport.nodeName);
-            console.log(viewport.nodeName.toUpperCase());
             if (viewport.nodeName.toUpperCase() !== 'CANVAS'){
 
                 viewport = document.createElement('canvas');

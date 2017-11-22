@@ -1,61 +1,338 @@
+var SCALE = 1;
+var nodes = [];
+var buildings = [];
+var forests = [];
+var amenity = [];
+var water = [];
+var roads = [];
+var cx = 0;//1273623389;
+var cy = 0;//363706170;
+var ORTHO = 80000;
+var width = 800;
+var height = 800;
+var userMode = '';
+var w = window.innerWidth;
+var h = window.innerHeight;
+var map = null;
+
+
+function initAutocomplete() {
+	map = new google.maps.Map(document.getElementById('map'), {
+	  zoom: 15,
+	  center: {lng: 127.3623389, lat: 36.3706170},
+	  mapTypeId: 'satellite'
+	});
+	// Create the search box and link it to the UI element.
+	var input = document.getElementById('pac-input');
+	var searchBox = new google.maps.places.SearchBox(input);
+	map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+	// Bias the SearchBox results towards current map's viewport.
+	map.addListener('bounds_changed', function() {
+	  searchBox.setBounds(map.getBounds());
+	  document.getElementById('lat-id').value = map.center.lat();
+	  document.getElementById('lon-id').value = map.center.lng();
+	});
+
+	var markers = [];
+	// Listen for the event fired when the user selects a prediction and retrieve
+	// more details for that place.
+	searchBox.addListener('places_changed', function() {
+	  var places = searchBox.getPlaces();
+
+	  if (places.length == 0) {
+		return;
+	  }
+
+	  // Clear out the old markers.
+	  markers.forEach(function(marker) {
+		marker.setMap(null);
+	  });
+	  markers = [];
+
+	  // For each place, get the icon, name and location.
+	  var bounds = new google.maps.LatLngBounds();
+	  places.forEach(function(place) {
+		if (!place.geometry) {
+		  console.log("Returned place contains no geometry");
+		  return;
+		}
+		var icon = {
+		  url: place.icon,
+		  size: new google.maps.Size(71, 71),
+		  origin: new google.maps.Point(0, 0),
+		  anchor: new google.maps.Point(17, 34),
+		  scaledSize: new google.maps.Size(25, 25)
+		};
+
+		// Create a marker for each place.
+		markers.push(new google.maps.Marker({
+		  map: map,
+		  icon: icon,
+		  title: place.name,
+		  position: place.geometry.location
+		}));
+
+		if (place.geometry.viewport) {
+		  // Only geocodes have viewport.
+		  bounds.union(place.geometry.viewport);
+		} else {
+		  bounds.extend(place.geometry.location);
+		}
+	  });
+	  map.fitBounds(bounds);
+	});
+  }
 
 $(function(){
-	var app = new PIXI.Application(800, 800);
-	document.body.appendChild(app.view);
-	
-	var graphics = new PIXI.Graphics();
+	SCALE = (h - 10) / 800;
+	load_map();
 
-	var background = new PIXI.Sprite.fromImage('/kaistmap.jpg');
-	background.width = 800;
-	background.height = 800;
-	app.stage.addChild(background);
+	var app = new PIXI.Application(w - 10, h - 10);
+	//document.body.appendChild(app.view);
+	var myView = document.getElementById('myCanvas');
+	myView.appendChild(app.view);
+	
+	var map_graphics = new PIXI.Graphics();
+	var graphics = new PIXI.Graphics();
+	
+	app.stage.addChild(map_graphics);
 	app.stage.addChild(graphics);
+	app.renderer.backgroundColor = 0xDDDDDD;
 	
-		
-	
+	function load_map(){
+		$.get( "/gamemap", function( data ) {
+			var strArray = data.split('\n');
+			for (var i in strArray){
+				var str = strArray[i].trim();
+				if (str[0] == '#') continue;
+				if (str[0] == 'i') {
+					var s = str.split('\t');
+					cx = s[4];
+					cy = s[5];
+					console.log(s, cx, cy);
+				}
+				if (str[0] == 'n') {
+					var s = str.split('\t');
+					var lat = parseInt(s[1] * 10000000);
+					var lon = parseInt(s[2] * 10000000);
+
+					var mx = ((lon - cx) / ORTHO * width /2 + width / 2 ) * SCALE;
+					var my = ((lat - cy) / ORTHO * height /2 + height / 2 ) * SCALE;
+
+					map.setCenter(new google.maps.LatLng(s[1], s[2]));
+					nodes.push({y: my, x: mx});
+				}
+				if (str[0] == 'b') {
+					var s = str.split('\t');
+					buildings.push({inodes:s.slice(1)});
+				}
+				if (str[0] == 'f') {
+					var s = str.split('\t');
+					forests.push({inodes:s.slice(1)});
+				}
+				if (str[0] == 'a') {
+					var s = str.split('\t');
+					amenity.push({inodes:s.slice(1)});
+				}
+				if (str[0] == 'w') {
+					var s = str.split('\t');
+					water.push({inodes:s.slice(1)});
+				}
+				if (str[0] == 'r') {
+					var s = str.split('\t');
+					roads.push({inodes:s.slice(1)});
+				}
+			}
+			//console.log(nodes);
+			//console.log(buildings);
+			//console.log(forests);
+			//console.log(amenity);
+			draw_map();
+		});
+	}
+
+	function draw_map(){
+		// set a fill and line style
+		// draw a shape
+		console.log('draw_map');
+		map_graphics.lineStyle(3, 0xCC3333, 1);
+		for (var i in amenity){
+			var x, y;
+			var first = true;
+			for (var j in amenity[i].inodes){
+				map_graphics.beginFill(0xCCCCCC);
+				var node = nodes[amenity[i].inodes[j]];
+				if (first){
+					first = false;
+					map_graphics.moveTo(node.x, height *SCALE - node.y);
+				}
+				else{
+					map_graphics.lineTo(node.x, height *SCALE - node.y);
+				}
+				map_graphics.endFill();
+			}
+		}
+		// set a fill and line style
+		// draw a shape
+		map_graphics.lineStyle(0, 0xffd900, 1);
+		for (var i in buildings){
+			//console.log(buildings[i]);
+			var x, y;
+			var first = true;
+			for (var j in buildings[i].inodes){
+				map_graphics.beginFill(0xFF3300);
+				//console.log(j);
+				var node = nodes[buildings[i].inodes[j]];
+				//console.log(buildings[i].inodes[j], node);
+				//console.log(node);
+				if (first){
+					first = false;
+					map_graphics.moveTo(node.x, height *SCALE - node.y);
+				}
+				else{
+					map_graphics.lineTo(node.x, height *SCALE - node.y);
+				}
+				map_graphics.endFill();
+			}
+		}
+		// set a fill and line style
+		// draw a shape
+		map_graphics.lineStyle(2, 0x119933, 1);
+		for (var i in forests){
+			var x, y;
+			var first = true;
+			for (var j in forests[i].inodes){
+				map_graphics.beginFill(0x22BB44);
+				var node = nodes[forests[i].inodes[j]];
+				if (first){
+					first = false;
+					map_graphics.moveTo(node.x, height *SCALE - node.y);
+				}
+				else{
+					map_graphics.lineTo(node.x, height *SCALE - node.y);
+				}
+				map_graphics.endFill();
+			}
+		}
+		// set a fill and line style
+		// draw a shape
+		map_graphics.lineStyle(0);
+		for (var i in water){
+			var x, y;
+			var first = true;
+			for (var j in water[i].inodes){
+				map_graphics.beginFill(0x8888BB);
+				var node = nodes[water[i].inodes[j]];
+				if (first){
+					first = false;
+					map_graphics.moveTo(node.x, height *SCALE - node.y);
+				}
+				else{
+					map_graphics.lineTo(node.x, height *SCALE - node.y);
+				}
+				map_graphics.endFill();
+			}
+		}
+		// set a fill and line style
+		// draw a shape
+		map_graphics.lineStyle(1, 0xCCAFAF, 1);
+		for (var i in roads){
+			var x, y;
+			var first = true;
+			for (var j in roads[i].inodes){
+				var node = nodes[roads[i].inodes[j]];
+				if (first){
+					first = false;
+					map_graphics.moveTo(node.x, height *SCALE - node.y);
+				}
+				else{
+					map_graphics.lineTo(node.x, height *SCALE - node.y);
+				}
+			}
+		}
+	}
+
 	var socket = io();
 	socket.on('init-client', function(serverData){
 		//alert(serverData.message);
 	});
-	
+
+	var last_updated = null;
+	var updated_html = '';
+	setInterval(function(){
+		if(!last_updated) return;
+		
+		var current = new Date().getTime() - last_updated;
+		$('#breifing').html(updated_html + '<p>Updated ' + parseInt(current / 1000) + ' seconds ago</p>');
+	}, 1000);
 	
 	socket.on('position-update', function(serverData){
 		//console.log(serverData);
 		var pos = serverData.pos;
+
 		graphics.clear();
-		graphics.lineStyle(0);
-		graphics.beginFill(0xFF0000, .5);
-		graphics.drawCircle(pos.gx, pos.gy, 5);
-		
-		graphics.lineStyle(0);
-		graphics.beginFill(0x0000FF, .5);
-		graphics.drawCircle(pos.ax, pos.ay, 5);
-		
 		var sig = serverData.data;
 		//console.log(sig);
 		//alert(serverData.message);
 		//graphics.position.set(pos.ax, pos.ay);
+		var elapsed = serverData.elapsed;
+		//$('#breifing').html('<h5>' + elapsed.date + '</h5><h3>GPU Elapsed: ' + elapsed.time / 1000 + ' seconds</h3>');
+		last_updated = elapsed.date;
+		var dateStr = new Date(elapsed.date).toString();
+		updated_html = '<h5>' + dateStr + '</h5><h3>GPU Elapsed: ' + elapsed.time / 1000 + ' seconds</h3>';
 		
+		if (userMode == 'B' || userMode == 'A' && check){
+			graphics.lineStyle(0);
+			graphics.beginFill(0x00FFFF, .5);
+			graphics.drawCircle(pos.ax * SCALE, pos.ay * SCALE, 40);
+		}
+		if (userMode == 'A' || userMode == 'B' && check){
+			graphics.lineStyle(0);
+			graphics.beginFill(0x00FFFF, .5);
+			graphics.drawCircle(pos.gx * SCALE, pos.gy * SCALE, 40);
+		}
+
 		for(var i = 0; i < sig.length; i++){
 			//console.log(sig[i]);
 			// Move it to the beginning of the line
 			//graphics.position.set(pos.ax, pos.ay);
+			var rad = i * Math.PI / 180;
 			
 			if(sig[i] == 0) continue;
-			var tx = -(sig[i + 360]) / sig[i] / 50;
-			var ty = -(sig[i + 360*2]) / sig[i] / 50;
+			var tx = sig[i] * Math.cos(rad) / 1500;
+			var ty = sig[i] * Math.sin(rad) / 1500;
 			//glVertex3f(pos.ax + tx, pos.ay + ty, 0.0f);
 			
 			//graphics.position.set(pos.ax, pos.ay);
 			// Draw the line (endPoint should be relative to myGraph's position)
 			//console.log(tx, ty);
-			graphics.lineStyle(2, 0xff00ff)
-				   .moveTo(pos.ax, pos.ay)
-				   .lineTo(pos.ax + tx, pos.ay - ty);
+
+			if (userMode == 'A') {
+				graphics.lineStyle(2, 0xff00ff)
+					   .moveTo(pos.gx * SCALE, pos.gy * SCALE)
+					   .lineTo(pos.gx * SCALE + tx, pos.gy * SCALE - ty);
+			}
+			if (userMode == 'B') {
+				graphics.lineStyle(2, 0xff00ff)
+					   .moveTo(pos.ax * SCALE, pos.ay * SCALE)
+					   .lineTo(pos.ax * SCALE + tx, pos.ay * SCALE - ty);
+			}
+		}
+
+		
+		if (userMode == 'B' || userMode == 'A' && check){
+			graphics.lineStyle(0);
+			graphics.beginFill(0x0000FF, 1.0);
+			graphics.drawCircle(pos.ax * SCALE, pos.ay * SCALE, 5);
+		}
+		if (userMode == 'A' || userMode == 'B' && check){
+			graphics.lineStyle(0);
+			graphics.beginFill(0xFF0000, 1.0);
+			graphics.drawCircle(pos.gx * SCALE, pos.gy * SCALE, 5);
 		}
 	});
 	
-	var userMode = '';
 	$('#A').click(function(){
 		userMode = 'A';
 		socket.emit('select', {mode: 'A'});
@@ -67,6 +344,14 @@ $(function(){
 		socket.emit('select', {mode: 'B'});
 		$('#A').removeClass('btn-danger');
 		$('#B').addClass('btn-primary');
+	});
+	var check = false;
+	$('#C').click(function(){
+		check = !check;
+		if (check)
+			$('#C').addClass('btn-warning');
+		else 
+			$('#C').removeClass('btn-warning');
 	});
 	
 	$(document).on('keydown', function( event ) {
@@ -87,219 +372,36 @@ $(function(){
 		}
 		if(userMode != 'A' && userMode != 'B') return;
 		//console.log(key);
-		if(key == '37' || key == 65	) //left
+		
+		if(key == '37')// || key == 65	) //left
 		{
 		  socket.emit('client-left');
 		}
-		if(key == '38' || key == 87) //up
+		if(key == '38')// || key == 87) //up
 		{
 		  socket.emit('client-up');
 		}
-		if(key == '39' || key == 68) //right
+		if(key == '39')// || key == 68) //right
 		{
 		  socket.emit('client-right');
 		}
-		if(key == '40' || key == 83) //down
+		if(key == '40')// || key == 83) //down
 		{
 		  socket.emit('client-down');
 		}
+		
 	});
-  
+
+	$('#myCanvas').click(function (e) { //Relative ( to its parent) mouse position 
+        //alert((e.pageX - w * 0.3) + ' , ' + (e.pageY));
+		var kx = e.pageX - w*0.3 - 2, 
+			ky = e.pageY - 2;
+		kx /= SCALE;
+		ky /= SCALE;
+		socket.emit('client-click', {x:kx, y:ky});
+    });
+
+
 });
-	
-	/* var userMode = null;
-  var started = false;
-  var oldData = {};
-  var newData = {};
-  var mygraphics = {};
-  var FPS = 30;
-  var stage = new PIXI.Container();
-  var renderer = PIXI.autoDetectRenderer(800, 600, {backgroundColor : 0x1099bb});
-  var nickName = '';
-  $('#myModal').modal({
-    keyboard:false,
-    show:true,
-    backdrop:'static'
-  });
-  //$('#myModal').modal('show');
-  $('#watch').click(function(e){
-    $('#myModal').modal('hide');
-    $('#viewport').append(renderer.view);
-    requestAnimationFrame(animate);
-    userMode = 'watch';
-    nickName = $('#nickName').val();
-    if(!nickName) nickName = 'unnamed';
-    socket.emit('usermode', {mode: 'watch', name: nickName});
-    started = true;
-  });
-
-  $('#attend').click(function(e){
-    $('#myModal').modal('hide');
-    $('#viewport').append(renderer.view);
-    requestAnimationFrame(animate);
-    userMode = 'attend';
-    nickName = $('#nickName').val();
-    socket.emit('usermode', {mode: 'attend', name: nickName});
-    if(!nickName) nickName = 'unnamed';
-    started = true;
-  });
-  
-//  var renderer = PIXI.autoDetectRenderer(800, 600, {backgroundColor : 0x1099bb});
-// $(window).width(), $(window).height()
-
-  socket.on('init-client', function(serverData){
-    FPS = serverData.fps;
-  });
-
-  socket.on('user-data', function(realData){
-    var meid = realData.you;
-    var serverData = realData.data;
-    t = serverData[meid];
-    if(t.team === 'A'){
-      $('#you').addClass('label-danger');
-    }
-    else if(t.team === 'B'){
-      $('#you').addClass('label-info');
-    }
-    else{
-      $('#you').addClass('label-default');
-    }
-    $('#you').html('YOU: ' + t.name + '(' + t.team + ')');
-
-
-    $('#userlist').html('');
-    $('#userlist')
-    .append($('<table>').addClass('table').addClass('table-condensed')
-        .append($('<tr>')
-          .append($('<td>')
-            .html('Name'))
-          .append($('<td>')
-            .html('Mode'))
-          .append($('<td>')
-            .html('Team'))
-          .append($('<td>')
-            .html('Time'))));
-    for(var k in serverData){
-      var t = serverData[k];
-
-      if(t.team === 'A'){
-        $('#userlist')
-        .append($('<table>').addClass('table').addClass('table-condensed')
-          .append($('<tr>').addClass('danger')
-            .append($('<td>')
-              .html(serverData[k].name))
-            .append($('<td>')
-              .html(serverData[k].mode))
-            .append($('<td>')
-              .html(serverData[k].team))
-            .append($('<td>')
-              .html(serverData[k].time))));
-      }
-      else if(t.team === 'B'){
-        $('#userlist')
-        .append($('<table>').addClass('table').addClass('table-condensed')
-          .append($('<tr>').addClass('info')
-            .append($('<td>')
-              .html(serverData[k].name))
-            .append($('<td>')
-              .html(serverData[k].mode))
-            .append($('<td>')
-              .html(serverData[k].team))
-            .append($('<td>')
-              .html(serverData[k].time))));
-      }
-      else{
-        $('#userlist')
-        .append($('<table>').addClass('table').addClass('table-condensed')
-          .append($('<tr>').addClass('active')
-            .append($('<td>')
-              .html(serverData[k].name))
-            .append($('<td>')
-              .html(serverData[k].mode))
-            .append($('<td>')
-              .html(serverData[k].team))
-            .append($('<td>')
-              .html(serverData[k].time))));
-
-      }
-      
-    }
-  });
-
-  socket.on('body-update', function(serverData){
-    $('#txt').html('scoreA:' + serverData.scoreA + ' vs. scoreB:' + serverData.scoreB);
-    oldData = newData;
-    newData = serverData;
-  });
-
-  $(document).on('keyup', function( event ) {
-    if(!started || userMode === 'watch') return;
-    var key = event.which || event.keyCode;
-    if(key == '32')
-      socket.emit('client-pushed-button', '');
-    if(key == '37') //left
-    {
-      socket.emit('client-left');
-    }
-    if(key == '39') //right
-    {
-      socket.emit('client-right');
-    }
-  });
-
-  function animate(){
-    updateBodyData();
-    requestAnimationFrame(animate);
-    renderer.render(stage);
-  }
-
-  function updateBodyData(){
-    for(var i in newData){
-      var d = newData[i];
-      var o = oldData[i];
-      if(!o){
-        o = {x: 0,y: 0,rotation: 0};
-      }
-      var ngraphics = mygraphics[d.id];
-      if(!ngraphics){
-        ngraphics = new PIXI.Graphics();
-        mygraphics[d.id] = ngraphics;
-        ngraphics.lineStyle(1, 0xFFFFFF);
-
-        if(d.team === 'A') ngraphics.beginFill(0xFFFF00);
-        else ngraphics.beginFill(0xFF00FF);
-
-
-        if(d.type === 'circle'){          
-          ngraphics.drawCircle(0, 0, d.r);
-        }
-        else if(d.type === 'convex-polygon'){
-          ngraphics.beginFill(0x00FFFF);
-          var w = 300;
-          var h = 300;
-          ngraphics.drawRect(-w/2, -h/2, w, h);
-          ngraphics.beginFill(0xFF0000);
-          ngraphics.drawRect(-w/2, -h/2, w, 10);
-          ngraphics.beginFill(0x0000FF);
-          ngraphics.drawRect(-w/2, h/2-10, w, 10);
-        }
-        else{
-
-        }
-        stage.addChild(ngraphics);
-      }
-      //ngraphics.x = d.x;
-      //ngraphics.y = d.y;
-      TweenLite.fromTo(ngraphics, 1/FPS, 
-        {x: d.x, y: d.y, rotation: d.ang}, 
-        {x: o.x, y: o.y, rotation: o.ang});
-    }
-    oldData = newData;
-  }
-  */
-
-
-
-
 
 

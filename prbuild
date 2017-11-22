@@ -1,0 +1,1 @@
+cd prog_gpu && make clean && make && cp prog ../ && cd ..
